@@ -1,4 +1,3 @@
-# RelacionesSitemasyProcesosLeche
 # Análisis Sistémico de la Producción Lechera Bovina: Descripción de Procesos, Puntos Críticos de Control y Complejidad Emergente
 
 ## Introducción al Sistema
