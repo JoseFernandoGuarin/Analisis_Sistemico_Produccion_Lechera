@@ -19,7 +19,7 @@
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
             background: white;
             border-radius: 20px;
@@ -56,7 +56,25 @@
             border-radius: 15px;
             padding: 30px;
             position: relative;
-            min-height: 800px;
+            min-height: 1000px;
+            overflow: visible;
+        }
+
+        .svg-connections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .nodes-container {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
         }
 
         .info-panel {
@@ -66,6 +84,8 @@
             height: fit-content;
             position: sticky;
             top: 20px;
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
         .info-panel h2 {
@@ -88,16 +108,20 @@
             font-weight: 500;
             text-align: center;
             position: absolute;
+            min-width: 140px;
+            font-size: 0.9em;
         }
 
         .node:hover {
-            transform: scale(1.05);
+            transform: scale(1.08);
             box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            z-index: 10;
         }
 
         .node.active {
             border-color: #fff;
-            box-shadow: 0 0 0 3px rgba(255,255,255,0.5);
+            box-shadow: 0 0 0 4px rgba(255,255,255,0.6);
+            z-index: 10;
         }
 
         /* Categorías de nodos */
@@ -140,18 +164,27 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.3em;
+            font-size: 1.1em;
             font-weight: bold;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 20px;
         }
 
-        .connection {
+        .pcc-badge {
             position: absolute;
-            background: #cbd5e0;
-            height: 2px;
-            transform-origin: left center;
-            opacity: 0.3;
-            pointer-events: none;
+            top: -10px;
+            right: -10px;
+            background: #f56565;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
 
         .legend {
@@ -172,23 +205,6 @@
             width: 20px;
             height: 20px;
             border-radius: 5px;
-        }
-
-        .pcc-badge {
-            position: absolute;
-            top: -10px;
-            right: -10px;
-            background: #f56565;
-            color: white;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8em;
-            font-weight: bold;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
 
         .stats-grid {
@@ -222,8 +238,17 @@
             50% { opacity: 0.6; }
         }
 
-        .node.pcc-node {
+        .node.pcc-node::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            right: -5px;
+            bottom: -5px;
+            border-radius: 12px;
+            background: rgba(245, 101, 101, 0.3);
             animation: pulse 2s infinite;
+            z-index: -1;
         }
 
         .tabs {
@@ -251,9 +276,13 @@
             transform: translateY(-2px);
         }
 
-        @media (max-width: 1200px) {
+        @media (max-width: 1400px) {
             .main-content {
                 grid-template-columns: 1fr;
+            }
+            
+            .info-panel {
+                position: relative;
             }
         }
     </style>
@@ -263,11 +292,13 @@
         <header>
             <h1>🐄 Sistema de Producción Lechera</h1>
             <p>Análisis Interactivo de Procesos, Puntos Críticos y Complejidad Sistémica</p>
+            <p>José Fernando Guarin M., Ph.D.</p>
         </header>
 
         <div class="main-content">
             <div class="diagram-container" id="diagram">
-                <!-- El diagrama se generará con JavaScript -->
+                <svg class="svg-connections" id="connections"></svg>
+                <div class="nodes-container" id="nodes"></div>
             </div>
 
             <div class="info-panel">
@@ -296,7 +327,7 @@
                     <h2>Estadísticas del Sistema</h2>
                     <div class="stats-grid">
                         <div class="stat-card">
-                            <div class="stat-value">18</div>
+                            <div class="stat-value">19</div>
                             <div class="stat-label">Componentes</div>
                         </div>
                         <div class="stat-card">
@@ -308,8 +339,8 @@
                             <div class="stat-label">Subsistemas</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-value">32+</div>
-                            <div class="stat-label">Interacciones</div>
+                            <div class="stat-value">25+</div>
+                            <div class="stat-label">Conexiones</div>
                         </div>
                     </div>
                 </div>
@@ -462,30 +493,59 @@
             }
         };
 
-        // Posiciones de los nodos (ajustadas para mejor visualización)
+        // Posiciones de los nodos (reajustadas con más espacio)
         const nodePositions = {
-            'sistema-produccion': { x: 350, y: 350 },
-            'volumen-leche': { x: 50, y: 250 },
-            'produccion-vaca': { x: 50, y: 400 },
-            'vacas-lactancia': { x: 50, y: 150 },
-            'descarte': { x: 200, y: 50 },
-            'tasa-celo': { x: 350, y: 100 },
-            'tasa-prenez': { x: 500, y: 150 },
-            'dias-lactancia': { x: 600, y: 250 },
-            'tasa-concepcion': { x: 550, y: 350 },
-            'sanidad': { x: 450, y: 500 },
-            'enfermedad-reproductiva': { x: 700, y: 150 },
-            'enfermedad-parto': { x: 700, y: 250 },
-            'trastornos-glandula': { x: 700, y: 350 },
-            'trastornos-podales': { x: 700, y: 450 },
-            'estado-nutricional': { x: 550, y: 600 },
-            'factores-ambientales': { x: 850, y: 300 },
-            'factores-tecnicos': { x: 850, y: 450 },
-            'gerenciamiento': { x: 350, y: 650 },
-            'sistema-cria': { x: 100, y: 600 }
+            'descarte': { x: 180, y: 30 },
+            'vacas-lactancia': { x: 180, y: 130 },
+            'volumen-leche': { x: 30, y: 220 },
+            'produccion-vaca': { x: 180, y: 310 },
+            'tasa-celo': { x: 380, y: 30 },
+            'sanidad': { x: 580, y: 30 },
+            'tasa-prenez': { x: 380, y: 140 },
+            'tasa-concepcion': { x: 580, y: 220 },
+            'dias-lactancia': { x: 380, y: 310 },
+            'sistema-produccion': { x: 530, y: 380 },
+            'enfermedad-reproductiva': { x: 800, y: 100 },
+            'enfermedad-parto': { x: 800, y: 200 },
+            'trastornos-glandula': { x: 800, y: 300 },
+            'trastornos-podales': { x: 800, y: 400 },
+            'estado-nutricional': { x: 580, y: 550 },
+            'factores-ambientales': { x: 800, y: 520 },
+            'factores-tecnicos': { x: 800, y: 640 },
+            'gerenciamiento': { x: 380, y: 700 },
+            'sistema-cria': { x: 100, y: 700 }
         };
 
-        const diagram = document.getElementById('diagram');
+        // Conexiones del diagrama original
+        const connections = [
+            { from: 'descarte', to: 'vacas-lactancia' },
+            { from: 'vacas-lactancia', to: 'volumen-leche' },
+            { from: 'produccion-vaca', to: 'volumen-leche' },
+            { from: 'sistema-cria', to: 'produccion-vaca' },
+            { from: 'tasa-celo', to: 'tasa-prenez' },
+            { from: 'sanidad', to: 'tasa-concepcion' },
+            { from: 'sanidad', to: 'descarte' },
+            { from: 'tasa-prenez', to: 'dias-lactancia' },
+            { from: 'dias-lactancia', to: 'produccion-vaca' },
+            { from: 'tasa-concepcion', to: 'dias-lactancia' },
+            { from: 'enfermedad-reproductiva', to: 'sistema-produccion' },
+            { from: 'enfermedad-parto', to: 'sistema-produccion' },
+            { from: 'trastornos-glandula', to: 'sistema-produccion' },
+            { from: 'trastornos-podales', to: 'sistema-produccion' },
+            { from: 'estado-nutricional', to: 'sistema-produccion' },
+            { from: 'factores-ambientales', to: 'sistema-produccion' },
+            { from: 'factores-tecnicos', to: 'sistema-produccion' },
+            { from: 'gerenciamiento', to: 'sistema-produccion' },
+            { from: 'sistema-produccion', to: 'produccion-vaca' },
+            { from: 'sistema-produccion', to: 'sanidad' },
+            { from: 'sistema-produccion', to: 'dias-lactancia' },
+            { from: 'sistema-produccion', to: 'estado-nutricional' },
+            { from: 'dias-lactancia', to: 'tasa-concepcion' },
+            { from: 'tasa-prenez', to: 'tasa-concepcion' }
+        ];
+
+        const nodesContainer = document.getElementById('nodes');
+        const svg = document.getElementById('connections');
 
         // Crear nodos
         Object.keys(systemData).forEach(key => {
@@ -512,17 +572,69 @@
             
             node.addEventListener('click', () => selectNode(key));
             
-            diagram.appendChild(node);
+            nodesContainer.appendChild(node);
         });
 
-        function selectNode(key) {
-            // Remover selección previa
-            document.querySelectorAll('.node').forEach(n => n.classList.remove('active'));
+        // Dibujar conexiones
+        function drawConnections() {
+            const svgNS = "http://www.w3.org/2000/svg";
+            svg.innerHTML = '';
             
-            // Seleccionar nuevo nodo
+            connections.forEach(conn => {
+                const fromNode = document.getElementById(conn.from);
+                const toNode = document.getElementById(conn.to);
+                
+                if (!fromNode || !toNode) return;
+                
+                const fromRect = fromNode.getBoundingClientRect();
+                const toRect = toNode.getBoundingClientRect();
+                const containerRect = document.getElementById('diagram').getBoundingClientRect();
+                
+                const fromX = fromRect.left + fromRect.width / 2 - containerRect.left;
+                const fromY = fromRect.top + fromRect.height / 2 - containerRect.top;
+                const toX = toRect.left + toRect.width / 2 - containerRect.left;
+                const toY = toRect.top + toRect.height / 2 - containerRect.top;
+                
+                // Crear línea
+                const line = document.createElementNS(svgNS, 'line');
+                line.setAttribute('x1', fromX);
+                line.setAttribute('y1', fromY);
+                line.setAttribute('x2', toX);
+                line.setAttribute('y2', toY);
+                line.setAttribute('stroke', '#cbd5e0');
+                line.setAttribute('stroke-width', '2');
+                line.setAttribute('opacity', '0.4');
+                
+                // Crear flecha
+                const angle = Math.atan2(toY - fromY, toX - fromX);
+                const arrowLength = 10;
+                const arrowWidth = 6;
+                
+                const arrowX = toX - Math.cos(angle) * (toRect.width / 2 + 5);
+                const arrowY = toY - Math.sin(angle) * (toRect.height / 2 + 5);
+                
+                const arrow = document.createElementNS(svgNS, 'polygon');
+                const points = [
+                    [arrowX, arrowY],
+                    [arrowX - arrowLength * Math.cos(angle) - arrowWidth * Math.sin(angle), 
+                     arrowY - arrowLength * Math.sin(angle) + arrowWidth * Math.cos(angle)],
+                    [arrowX - arrowLength * Math.cos(angle) + arrowWidth * Math.sin(angle), 
+                     arrowY - arrowLength * Math.sin(angle) - arrowWidth * Math.cos(angle)]
+                ];
+                
+                arrow.setAttribute('points', points.map(p => p.join(',')).join(' '));
+                arrow.setAttribute('fill', '#cbd5e0');
+                arrow.setAttribute('opacity', '0.4');
+                
+                svg.appendChild(line);
+                svg.appendChild(arrow);
+            });
+        }
+
+        function selectNode(key) {
+            document.querySelectorAll('.node').forEach(n => n.classList.remove('active'));
             document.getElementById(key).classList.add('active');
             
-            // Actualizar panel de información
             const data = systemData[key];
             document.getElementById('info-title').textContent = data.title;
             document.getElementById('info-text').innerHTML = `
@@ -533,17 +645,20 @@
         }
 
         function showTab(tab) {
-            // Actualizar botones
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             event.target.classList.add('active');
             
-            // Mostrar contenido
             document.getElementById('info-content').style.display = tab === 'info' ? 'block' : 'none';
             document.getElementById('stats-content').style.display = tab === 'stats' ? 'block' : 'none';
         }
 
-        // Seleccionar nodo central por defecto
-        selectNode('sistema-produccion');
+        // Inicializar
+        setTimeout(() => {
+            drawConnections();
+            selectNode('sistema-produccion');
+        }, 100);
+
+        window.addEventListener('resize', drawConnections);
     </script>
 </body>
 </html>
